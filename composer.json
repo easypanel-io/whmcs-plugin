@@ -1,0 +1,31 @@
+{
+    "name": "whmcs/provisioning-module-sample",
+    "description": "EasyPanel Provisioning Module for WHMCS Billing Automation Platform",
+    "keywords": [
+        "whmcs",
+        "easypanel",
+        "provisioning module",
+        "server module"
+    ],
+    "homepage": "http://www.easypanel.io/",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Mateus M. Côrtes",
+            "email": "mateus@lacorte.dev",
+            "homepage": "http://www.lacorte.dev/",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "email": "support@easypanel.io",
+        "forum": "https://discord.gg/9bcDSXcZQ7",
+        "wiki": "https://easypanel.io/docs"
+    },
+    "require": {
+        "ramsey/uuid": "^4.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "@stable"
+    }
+}
