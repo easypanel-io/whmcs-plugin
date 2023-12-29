@@ -1,0 +1,33 @@
+{
+    "schema": "1.0",
+    "type": "whmcs-servers",
+    "name": "easypanel-templates",
+    "license": "MIT",
+    "category": "provisioning",
+    "description": {
+        "name": "EasyPanel Templates Provisioning Module",
+        "tagline": "Simplify Your Hosting Journey: EasyPanel Templates Provisioning Made Effortless.",
+        "long": "Unleash the simplicity of EasyPanel Templates Provisioning Module for WHMCS. Our module is designed to make the provisioning and management of products & services based on EasyPanel templates a breeze. The provided sample files demonstrate the optimal structure for a WHMCS provisioning module, showcasing supported functionality in an easy-to-understand manner. Whether you're a novice or seasoned developer, our module offers a straightforward solution for EasyPanel template provisioning in WHMCS.",
+        "features": [
+          "User-Friendly Interfaces: Enjoy easy-to-use client and admin interfaces for seamless provisioning and management.",
+          "WHMCS Hook Integration: Leverage the power of WHMCS hooks effortlessly, enhancing your module's functionality.",
+          "Structured Module Commands: Benefit from a clear and simple structure for module commands, ensuring easy product and service management based on EasyPanel templates."
+        ]
+    },
+    "logo": {
+        "filename": "logo.png"
+    },
+    "support": {
+        "homepage": "https:\/\/www.easypanel.io\/", 
+        "learn_more": "https:\/\/easypanel.io\/blog\/", 
+        "email": "support@easypanel.io", 
+        "support_url": "https:\/\/discord.gg\/9bcDSXcZQ7",
+        "docs_url": "https:\/\/easypanel.io\/docs\/"
+    },
+    "authors": [
+        {
+            "name": "Mateus M. Côrtes",
+            "homepage": "https:\/\/www.lacorte.dev\/"
+        }
+    ]
+}
