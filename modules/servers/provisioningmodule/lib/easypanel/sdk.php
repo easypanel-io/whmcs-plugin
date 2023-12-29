@@ -150,8 +150,6 @@ class EasyPanelSDK {
         } else {
             header("HTTP/1.1 409 Conflict");
         }
-        ?>
-        
     }
 
     public function destroyService() {
