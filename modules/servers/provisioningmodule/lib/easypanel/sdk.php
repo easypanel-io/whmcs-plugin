@@ -3,16 +3,121 @@ use Ramsey\Uuid\Uuid;
 
 class EasyPanelSDK {
 
-    public function listProjects() {
-        // TODO: Implement listProjects method
+    private function service_type($originalString, $keywords) {
+        // Variable to store the matched keyword
+        $matchedKeyword = null;
+
+        // Check if the original string includes any keyword from the array
+        foreach ($keywords as $keyword) {
+            if (!!strpos($originalString, $keyword)) {
+                $matchedKeyword = $keyword;
+                break; // Break out of the loop once a match is found
+            }
+        }
+
+        // Output the result
+        if (!$matchedKeyword) {
+            return $matchedKeyword;
+        } else {
+            return "app";
+        }
     }
 
-    public function listServices() {
-        // TODO: Implement listServices method
+    public function listProjects($apiUrl, $authorizationToken) {
+        // Your API endpoint URL
+        $apiUrl = "$apiUrl/api/trpc/projects.listProjectsAndServices?input={\"json\":null}";
+
+        // Validate url
+        $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrl === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            "Authorization: $authorizationToken",
+        ));
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+
+        $projects = $data['result']['data']['json']['projects'];
+
+        return $projects;
+    }
+
+    public function listServices($apiUrl, $authorizationToken, $clientId) {
+        $projectName = "client.$clientId";
+
+        // Your API endpoint URL
+        $apiUrl = "$apiUrl/api/trpc/projects.inspectProject?input={\"json\":{\"projectName\":\"$projectName\"}}";
+
+        // Validate url  
+        $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrl === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        // Your authorization token
+        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPGET, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            "Authorization: $authorizationToken",
+        ));
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+            
+        $hasProject = $data['error']['json']['code'];
+
+        if($hasProject !== -32603) {
+            return $data;
+        }
     }
 
     public function createProject($apiUrl, $authorizationToken, $clientId) {
-        // Validate input parameters
+        // Your API endpoint URL
+        $apiUrl = "https://$apiUrl/api/trpc/projects.createProject";
+
+        // Validate url
         $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
         if ($apiUrl === false) {
             throw new Exception("Invalid API URL", 1);
@@ -61,8 +166,31 @@ class EasyPanelSDK {
 
     public function createServiceFromTemplate($apiUrl, $authorizationToken, $clientId, $templateName) {
         // API endpoint URL
-       
-        
+        $apiUrl = "$apiUrl/api/trpc/templates.createFromSchema";
+
+        // Validate url
+        $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrl === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $projectName = join("client", $clientId);
+
+        $projectName = htmlspecialchars($projectName, ENT_QUOTES, 'UTF-8');
+
+        $serviceName = join("client", $clientId, Uuid::uuid4().toString(), array(, $templateName));
+
+        $serviceName = htmlspecialchars($serviceName, ENT_QUOTES, 'UTF-8');
+
+        $passwordSeed = new Uuid::uuid4().toString();
+
+        $password = str_replace('-', '', $passwordSeed);
+
         // Request headers
         $headers = array(
             'Content-Type: application/json',
@@ -72,15 +200,15 @@ class EasyPanelSDK {
         // Request data
         $jsonData = json_encode(array(
             'json' => array(
-                'name' => join(Uuid::uuid4().toString(), array(, $templateName))),
-                'projectName' => 'projeto-maroto',
+                'name' => $serviceName,
+                'projectName' => $projectName,
                 'schema' => array(
                     'services' => array(
                         array(
                             'type' => 'app',
                             'data' => array(
-                                'projectName' => 'projeto-maroto',
-                                'serviceName' => 'ghost',
+                                'projectName' => $projectName,
+                                'serviceName' => $serviceName,
                                 'source' => array(
                                     'type' => 'image',
                                     'image' => 'ghost:5-alpine'
@@ -101,19 +229,19 @@ class EasyPanelSDK {
                                 'env' => preg_replace('/^\s+|\s+$/m', '', "
                                     url=https://$(PRIMARY_DOMAIN)
                                     database__client=mysql
-                                    database__connection__host=$(PROJECT_NAME)_mysql
+                                    database__connection__host=$projectName_" . join('mysql', ) . new Uuid::uuid4().toString() ."
                                     database__connection__user=mysql
-                                    database__connection__password=bc322e6dca683640fd2c
-                                    database__connection__database=$(PROJECT_NAME)
+                                    database__connection__password=$password
+                                    database__connection__database=$projectName
                                 ")
                             )
                         ),
                         array(
                             'type' => 'mysql',
                             'data' => array(
-                                'projectName' => 'projeto-maroto',
-                                'serviceName' => 'mysql',
-                                'password' => 'bc322e6dca683640fd2c'
+                                'projectName' => $projectName,
+                                'serviceName' => join('mysql', $serviceName),
+                                'password' => $password
                             )
                         )
                     )
@@ -153,15 +281,183 @@ class EasyPanelSDK {
     }
 
     public function destroyService() {
-        // TODO: Implement destroyService method
+        // can be app, mysql, mariadb, postgres, mongo or redis
+        $serviceType = this.service_type($serviceName, ['mysql', 'mariadb', 'postgres', 'mongo', 'redis']) ?;
+
+        // Your API endpoint URL
+        $apiUrl = "$apiUrl/api/trpc/services.$serviceType.destroyService";
+
+        // Validate url
+        $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrl === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        // Request headers
+        $headers = array(
+            'Content-Type: application/json',
+            'Authorization: ' . $authorizationToken,
+        );
+
+        $projectName = htmlspecialchars($projectName, ENT_QUOTES, 'UTF-8');
+
+        $serviceName = htmlspecialchars($serviceName, ENT_QUOTES, 'UTF-8');
+
+        // Request data
+        $jsonData = json_encode(array(
+            'json' => array(
+                'projectName' => $projectName,
+                'serviceName' => $serviceName,
+            ),
+        ));
+
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        // Display the response
+        echo $response;
     }
 
     public function disableService() {
-        // TODO: Implement disableService method
+        // can be app, mysql, mariadb, postgres, mongo or redis
+        $serviceType = this.service_type($serviceName, ['mysql', 'mariadb', 'postgres', 'mongo', 'redis']) ?;
+
+        // Your API endpoint URL
+        $apiUrl = "$apiUrl/api/trpc/services.$serviceType.disableService";
+
+        // Validate url
+        $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrl === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        // Request headers
+        $headers = array(
+            'Content-Type: application/json',
+            'Authorization: ' . $authorizationToken,
+        );
+
+        $projectName = htmlspecialchars($projectName, ENT_QUOTES, 'UTF-8');
+
+        $serviceName = htmlspecialchars($serviceName, ENT_QUOTES, 'UTF-8');
+
+        // Request data
+        $jsonData = json_encode(array(
+            'json' => array(
+                'projectName' => $projectName,
+                'serviceName' => $serviceName,
+            ),
+        ));
+
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        // Display the response
+        echo $response;
     }
 
-    public function startService() {
-        // TODO: Implement startService method
+    public function startService($apiUrl, $authorizationToken, $clientId, $projectName, $serviceName) {
+        // can be app, mysql, mariadb, postgres, mongo or redis
+        $serviceType = this.includes_on_array($serviceName, ['mysql', 'mariadb', 'postgres', 'mongo', 'redis']) ?;
+
+        // Your API endpoint URL
+        $apiUrl = "$apiUrl/api/trpc/services.$serviceType.enableService";
+
+        // Validate url
+        $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrl === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        // Request headers
+        $headers = array(
+            'Content-Type: application/json',
+            'Authorization: ' . $authorizationToken,
+        );
+
+        $projectName = htmlspecialchars($projectName, ENT_QUOTES, 'UTF-8');
+
+        $serviceName = htmlspecialchars($serviceName, ENT_QUOTES, 'UTF-8');
+
+        // Request data
+        $jsonData = json_encode(array(
+            'json' => array(
+                'projectName' => $projectName,
+                'serviceName' => $serviceName,
+            ),
+        ));
+
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        // Display the response
+        echo $response;
     }
 
     public function monitorServiceStatus() {
