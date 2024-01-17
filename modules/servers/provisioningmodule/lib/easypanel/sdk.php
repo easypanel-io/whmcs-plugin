@@ -196,55 +196,23 @@ class EasyPanelSDK {
             'Content-Type: application/json',
             "Authorization: $authorizationToken",
         );
-        
+        $libraryPath = __DIR__;
+
+        // Construct the full path to the JSON file
+        $jsonFilePath = $libraryPath . '/data.json';
+
+        // Read the JSON file
+        $jsonString = file_get_contents($jsonFilePath);
+
+        // Parse the JSON string into a PHP associative array
+        return json_decode($jsonString, true);
         // Request data
         $jsonData = json_encode(array(
             'json' => array(
                 'name' => $serviceName,
                 'projectName' => $projectName,
                 'schema' => array(
-                    'services' => array(
-                        array(
-                            'type' => 'app',
-                            'data' => array(
-                                'projectName' => $projectName,
-                                'serviceName' => $serviceName,
-                                'source' => array(
-                                    'type' => 'image',
-                                    'image' => 'ghost:5-alpine'
-                                ),
-                                'domains' => array(
-                                    array(
-                                        'host' => '$(EASYPANEL_DOMAIN)',
-                                        'port' => 2368
-                                    )
-                                ),
-                                'mounts' => array(
-                                    array(
-                                        'type' => 'volume',
-                                        'name' => 'content',
-                                        'mountPath' => '/var/lib/ghost/content'
-                                    )
-                                ),
-                                'env' => preg_replace('/^\s+|\s+$/m', '', "
-                                    url=https://$(PRIMARY_DOMAIN)
-                                    database__client=mysql
-                                    database__connection__host=$projectName_" . join('mysql', ) . new Uuid::uuid4().toString() ."
-                                    database__connection__user=mysql
-                                    database__connection__password=$password
-                                    database__connection__database=$projectName
-                                ")
-                            )
-                        ),
-                        array(
-                            'type' => 'mysql',
-                            'data' => array(
-                                'projectName' => $projectName,
-                                'serviceName' => join('mysql', $serviceName),
-                                'password' => $password
-                            )
-                        )
-                    )
+                    'services' => this.ackee($projectName),
                 )
             )
         ));
@@ -462,5 +430,36 @@ class EasyPanelSDK {
 
     public function monitorServiceStatus() {
         // TODO: Implement monitorServiceStatus method
+    }
+
+    private function ackee(project -> string) -> array {
+        $ackeePassword = new Uuid::uuid4().toString();
+        $mongoPassword = new Uuid::uuid4().toString();
+        return [
+            [
+                "type" => "app",
+                "env" => "
+                    WAIT_HOSTS=$(PROJECT_NAME)_ackee-db:27017
+                    ACKEE_MONGODB=mongodb://mongo:$mongoPassword@$(PROJECT_NAME)_ackee-db:27017
+                    ACKEE_USERNAME=admin
+                    ACKEE_PASSWORD=$ackeePassword
+                ",
+                "source" => [
+                    "type" => "image",
+                    "image" => "electerious/ackee:3.4.2"
+                ],
+                "domains":[
+                    "host" => "$(EASYPANEL_DOMAIN)",
+                    "port" => 3000
+                ]
+            ],
+            [
+                "type" => "mongo",
+                "data" => [
+                   "image" => "mongo:4",
+                   "password" => $mongoPassword
+                ]
+            ]
+        ]
     }
 }
