@@ -57,7 +57,7 @@ function provisioningmodule_MetaData()
     return array(
         'DisplayName' => 'EasyPanel Provisioning Module',
         'APIVersion' => '1.0', // Use API Version 1.1
-        'RequiresServer' => true, // Set true if module requires a server to work
+        'RequiresServer' => false, // Set true if module requires a server to work
         'DefaultNonSSLPort' => '80', // Default Non-SSL Connection Port
         'DefaultSSLPort' => '443', // Default SSL Connection Port
         'ServiceSingleSignOnLabel' => 'Login to Panel as User',
@@ -88,7 +88,7 @@ function provisioningmodule_MetaData()
  *
  * @return array
  */
-function provisioningmodule_ConfigOptions()
+function easypanel_ConfigOptions()
 {
     return array(
         // a text field type allows for single line text input
@@ -131,7 +131,7 @@ function provisioningmodule_ConfigOptions()
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_CreateAccount(array $params)
+function easypanel_CreateAccount(array $params)
 {
     try {
         Capsule::schema()->create(

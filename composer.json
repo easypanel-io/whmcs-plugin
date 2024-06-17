@@ -1,5 +1,5 @@
 {
-    "name": "whmcs/provisioning-module-sample",
+    "name": "easypanel/provisioning-module-for-whmcs",
     "description": "EasyPanel Provisioning Module for WHMCS Billing Automation Platform",
     "keywords": [
         "whmcs",
