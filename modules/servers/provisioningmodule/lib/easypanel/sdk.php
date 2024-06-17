@@ -1,7 +1,14 @@
 <?php
+
 use Ramsey\Uuid\Uuid;
+use Hackzilla\PasswordGenerator\Generator\ComputerPasswordGenerator;
 
 class EasyPanelSDK {
+
+    function __construct($apiUrl, $authorizationToken)  {
+        $this->apiUrl = $apiUrl;
+        $this->authorizationToken = $authorizationToken;
+    }
 
     private function service_type($originalString, $keywords) {
         // Variable to store the matched keyword
@@ -23,9 +30,9 @@ class EasyPanelSDK {
         }
     }
 
-    public function listProjects($apiUrl, $authorizationToken) {
+    public function listProjects() {
         // Your API endpoint URL
-        $apiUrl = "$apiUrl/api/trpc/projects.listProjectsAndServices?input={\"json\":null}";
+        $apiUrl = "$this->apiUrl/api/trpc/projects.listProjectsAndServices?input={\"json\":null}";
 
         // Validate url
         $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
@@ -33,7 +40,7 @@ class EasyPanelSDK {
             throw new Exception("Invalid API URL", 1);
         }
 
-        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
         if (empty($authorizationToken)) {
             throw new Exception("Invalid API URL", 1);
         }
@@ -67,11 +74,11 @@ class EasyPanelSDK {
         return $projects;
     }
 
-    public function listServices($apiUrl, $authorizationToken, $clientId) {
-        $projectName = "client.$clientId";
+    public function listServices($clientId) {
+        $projectName = "$clientId";
 
         // Your API endpoint URL
-        $apiUrl = "$apiUrl/api/trpc/projects.inspectProject?input={\"json\":{\"projectName\":\"$projectName\"}}";
+        $apiUrl = "$this->apiUrl/api/trpc/projects.inspectProject?input={\"json\":{\"projectName\":\"$projectName\"}}";
 
         // Validate url  
         $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
@@ -80,7 +87,7 @@ class EasyPanelSDK {
         }
 
         // Your authorization token
-        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
 
         // Set up cURL
         $ch = curl_init($apiUrl);
@@ -113,9 +120,9 @@ class EasyPanelSDK {
         }
     }
 
-    public function createProject($apiUrl, $authorizationToken, $clientId) {
+    public function createProject($clientId) {
         // Your API endpoint URL
-        $apiUrl = "https://$apiUrl/api/trpc/projects.createProject";
+        $apiUrl = "https://$this->apiUrl/api/trpc/projects.createProject";
 
         // Validate url
         $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
@@ -123,12 +130,12 @@ class EasyPanelSDK {
             throw new Exception("Invalid API URL", 1);
         }
 
-        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
         if (empty($authorizationToken)) {
             throw new Exception("Invalid API URL", 1);
         }
 
-        $projectName = "client.$clientId";
+        $projectName = "$clientId";
 
         // Your JSON data
         $jsonData = json_encode(['json' => ['name' => $projectName]]);
@@ -164,9 +171,9 @@ class EasyPanelSDK {
         }
     }
 
-    public function createServiceFromTemplate($apiUrl, $authorizationToken, $clientId, $templateName) {
+    public function createService($clientId, $templateName) {
         // API endpoint URL
-        $apiUrl = "$apiUrl/api/trpc/templates.createFromSchema";
+        $apiUrl = "$this->apiUrl/api/trpc/templates.createFromSchema";
 
         // Validate url
         $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
@@ -174,56 +181,33 @@ class EasyPanelSDK {
             throw new Exception("Invalid API URL", 1);
         }
 
-        $authorizationToken = htmlspecialchars($authorizationToken, ENT_QUOTES, 'UTF-8');
+        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
         if (empty($authorizationToken)) {
             throw new Exception("Invalid API URL", 1);
         }
 
-        $projectName = join("client", $clientId);
+        $projectName = htmlspecialchars($clientId, ENT_QUOTES, 'UTF-8');
 
-        $projectName = htmlspecialchars($projectName, ENT_QUOTES, 'UTF-8');
+        $serviceNamePrefix = Uuid::uuid4()->toString()."_";
 
-        $serviceName = join("client", $clientId, Uuid::uuid4().toString(), array(, $templateName));
+        $serviceNamePrefix = htmlspecialchars($serviceNamePrefix, ENT_QUOTES, 'UTF-8');
 
-        $serviceName = htmlspecialchars($serviceName, ENT_QUOTES, 'UTF-8');
+        $service = $this->$templateName();
 
-        $passwordSeed = new Uuid::uuid4().toString();
+        $template = $service["template"];
 
-        $password = str_replace('-', '', $passwordSeed);
-
-        // Request headers
         $headers = array(
             'Content-Type: application/json',
             "Authorization: $authorizationToken",
         );
-        $libraryPath = __DIR__;
-
-        // Construct the full path to the JSON file
-        $jsonFilePath = $libraryPath . '/data.json';
-
-        // Read the JSON file
-        $jsonString = file_get_contents($jsonFilePath);
-
-        // Parse the JSON string into a PHP associative array
-        return json_decode($jsonString, true);
-        // Request data
-        $jsonData = json_encode(array(
-            'json' => array(
-                'name' => $serviceName,
-                'projectName' => $projectName,
-                'schema' => array(
-                    'services' => this.ackee($projectName),
-                )
-            )
-        ));
         
         // Set up cURL
         $ch = curl_init($apiUrl);
-        
+
         // Set cURL options
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $template);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
         // Execute cURL session and get the response
@@ -242,13 +226,17 @@ class EasyPanelSDK {
         $hasService = $data['error']['json']['code'];
         
         if($hasService !== -32603) {
-            header("HTTP/1.1 200 OK");
+            return [
+                'services' => $service["services"],
+                'prefix' => $serviceNamePrefix,
+            ];
         } else {
-            header("HTTP/1.1 409 Conflict");
+            // HTTP/1.1 409 Conflict
+            return false;
         }
     }
 
-    public function destroyService() {
+    /*public function destroyService() {
         // can be app, mysql, mariadb, postgres, mongo or redis
         $serviceType = this.service_type($serviceName, ['mysql', 'mariadb', 'postgres', 'mongo', 'redis']) ?;
 
@@ -426,40 +414,74 @@ class EasyPanelSDK {
 
         // Display the response
         echo $response;
-    }
+    }*/
 
     public function monitorServiceStatus() {
         // TODO: Implement monitorServiceStatus method
     }
 
-    private function ackee(project -> string) -> array {
-        $ackeePassword = new Uuid::uuid4().toString();
-        $mongoPassword = new Uuid::uuid4().toString();
-        return [
-            [
-                "type" => "app",
-                "env" => "
-                    WAIT_HOSTS=$(PROJECT_NAME)_ackee-db:27017
-                    ACKEE_MONGODB=mongodb://mongo:$mongoPassword@$(PROJECT_NAME)_ackee-db:27017
-                    ACKEE_USERNAME=admin
-                    ACKEE_PASSWORD=$ackeePassword
-                ",
-                "source" => [
-                    "type" => "image",
-                    "image" => "electerious/ackee:3.4.2"
-                ],
-                "domains":[
-                    "host" => "$(EASYPANEL_DOMAIN)",
-                    "port" => 3000
-                ]
-            ],
-            [
-                "type" => "mongo",
-                "data" => [
-                   "image" => "mongo:4",
-                   "password" => $mongoPassword
-                ]
+    private function ghost($projectName, $serviceNamePrefix) {
+        $generator = new ComputerPasswordGenerator();
+
+        $generator
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_UPPER_CASE, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_LOWER_CASE, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_NUMBERS, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_SYMBOLS, false)
+        ;
+
+        $mysql_password = $generator->generatePassword();
+        $template = '
+{
+    "json": {
+        "name": "Ghost",
+        "projectName": "'.$projectName.'",
+        "schema": {
+            "services": [
+                {
+                    "type": "app",
+                    "data": {
+                        "projectName": "'.$projectName.'",
+                        "serviceName": "'.$serviceNamePrefix.'ghost",
+                        "source": {
+                            "type": "image",
+                            "image": "ghost:5.82.12-alpine"
+                        },
+                        "domains": [
+                            {
+                                "host": "$(EASYPANEL_DOMAIN)",
+                                "port": 2368
+                            }
+                        ],
+                        "mounts": [
+                            {
+                                "type": "volume",
+                                "name": "content",
+                                "mountPath": "/var/lib/ghost/content"
+                            }
+                        ],
+                        "env": "url=https://$(PRIMARY_DOMAIN)\ndatabase__client=mysql\ndatabase__connection__host=$(PROJECT_NAME)_'.$serviceNamePrefix.'mysql\ndatabase__connection__user=mysql\ndatabase__connection__password='.$mysql_password.'\ndatabase__connection__database=$(PROJECT_NAME)"
+                    }
+                },
+                {
+                    "type": "mysql",
+                    "data": {
+                        "projectName": "'.$projectName.'",
+                        "serviceName": "'.$serviceNamePrefix.'mysql",
+                        "password": "'.$mysql_password.'"
+                    }
+                }
             ]
-        ]
+        }
+    }
+}
+        ';
+        return [
+            'template' => $template,
+            'services' => [
+                $serviceNamePrefix . "ghost",
+                $serviceNamePrefix . "mysql",
+            ],
+        ];
     }
 }
