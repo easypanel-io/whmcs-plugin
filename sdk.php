@@ -441,6 +441,66 @@ class EasyPanelSDK {
         echo $response;
     }
 
+    public function restartService($clientId, $service) {
+        // Type of service
+        $serviceType = $this->service_type($service);
+
+        // Your API endpoint URL
+        $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.restartService";
+
+        // Validate url
+        $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrl === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        // Request headers
+        $headers = array(
+            'Content-Type: application/json',
+            'Authorization: ' . $authorizationToken,
+        );
+
+        $project = htmlspecialchars($clientId, ENT_QUOTES, 'UTF-8');
+
+        $service = htmlspecialchars($service, ENT_QUOTES, 'UTF-8');
+
+        // Request data
+        $body = json_encode(array(
+            'json' => array(
+                'projectName' => $project,
+                'serviceName' => $service,
+            ),
+        ));
+
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        // Display the response
+        echo $response;
+    }
+
     public function monitorServiceStatus() {
         // TODO: Implement monitorServiceStatus method
     }

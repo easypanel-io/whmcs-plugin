@@ -207,11 +207,23 @@ function easypanel_CreateAccount(array $params)
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_SuspendAccount(array $params)
+function easypanel_SuspendAccount(array $params)
 {
     try {
         // Call the service's suspend function, using the values provided by
         // WHMCS in `$params`.
+        $client = Capsule::table('tblclients')
+            ->where('id', $params['userid'])
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $services = Capsule::table('tbleasypanel')
+            ->where('client', $clientId)
+            ->where('prefix', $params['serviceid']."_")
+            ->get();
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        foreach ($services as $service) {
+            $sdk->disableService($clientId, $service->service);
+        }
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
         logModuleCall(
@@ -241,11 +253,23 @@ function provisioningmodule_SuspendAccount(array $params)
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_UnsuspendAccount(array $params)
+function easypanel_UnsuspendAccount(array $params)
 {
     try {
         // Call the service's unsuspend function, using the values provided by
         // WHMCS in `$params`.
+        $client = Capsule::table('tblclients')
+            ->where('id', $params['userid'])
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $services = Capsule::table('tbleasypanel')
+            ->where('client', $clientId)
+            ->where('prefix', $params['serviceid']."_")
+            ->get();
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        foreach ($services as $service) {
+            $sdk->enableService($clientId, $service->service);
+        }
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
         logModuleCall(
@@ -601,13 +625,7 @@ function easypanel_restartService(array $params)
             ->get();
         $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
         foreach ($services as $service) {
-            $sdk->disableService($clientId, $service->service);
-        }
-
-        sleep(10);
-        
-        foreach ($services as $service) {
-            $sdk->startService($clientId, $service->service);
+            $sdk->restartService($clientId, $service->service);
         }
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
