@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__ . 'sdk.php';
+require_once __DIR__ . '/sdk.php';
 
 use Ramsey\Uuid\Uuid;
 use WHMCS\Database\Capsule;

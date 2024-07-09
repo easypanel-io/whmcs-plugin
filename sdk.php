@@ -7,7 +7,7 @@ class EasyPanelSDK {
         $this->authorizationToken = $authorizationToken;
     }
 
-    private function service_type($originalString, ) {
+    private function service_type($originalString) {
         // can be app, mysql, mariadb, postgres, mongo or redis
         $keywords = ["mysql", "mariadb", "postgres", "mongo", "redis"];
 
@@ -28,6 +28,50 @@ class EasyPanelSDK {
         } else {
             return "app";
         }
+    }
+
+    public function getStatus() {
+        // Your API endpoint URL
+        $apiUrl = "$this->apiUrl/api/trpc/update.getStatus?input={\"json\":null}";
+
+        // Validate url
+        $apiUrlTest = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrlTest === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            "Authorization: $authorizationToken",
+        ));
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+
+        $metadata = $data['result']['data']['json'];
+
+        return $metadata;
     }
 
     public function listProjects() {
@@ -325,8 +369,23 @@ class EasyPanelSDK {
         // Type of service
         $serviceType = $this->service_type($service);
 
-        // Your API endpoint URL
-        $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.disableService";
+        // Version adaptations
+        $current_version = $this->getStatus()["version"];
+        $version = "v1.43.0";
+        if($serviceType == "app") {
+            if (version_compare($current_version, $version) >= 0) {
+                echo "Version is higher or equal to v1.43.0";
+                // Your API endpoint URL
+                $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.stopService";
+            } else {
+                echo "Version is lower than v1.43.0";
+                // Your API endpoint URL
+                $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.disableService";
+            }
+        } else {
+            // Your API endpoint URL
+            $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.disableService";
+        }
 
         // Validate url
         $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
@@ -385,8 +444,23 @@ class EasyPanelSDK {
         // Type of service
         $serviceType = $this->service_type($service);
 
-        // Your API endpoint URL
-        $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.enableService";
+        // Version adaptations
+        $current_version = $this->getStatus()["version"];
+        $version = "1.43.0";
+        if($serviceType == "app") {
+            if (version_compare($current_version, $version, "ge")) {
+                echo "Version is higher or equal to v1.43.0";
+                // Your API endpoint URL
+                $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.startService";
+            } else {
+                echo "Version is lower than v1.43.0";
+                // Your API endpoint URL
+                $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.enableService";
+            }
+        } else {
+            // Your API endpoint URL
+            $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.enableService";
+        }
 
         // Validate url
         $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
