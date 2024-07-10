@@ -37,10 +37,7 @@ jobs:
           echo "::set-output name=new_version::$NEW_VERSION"
 
       - name: Zip repository contents
-        run: |
-          mkdir easypanel
-          cp -r * easypanel
-          zip -r easypanel.zip easypanel
+        run: zip -r easypanel.zip easypanel
 
       - name: Commit version bump
         run: |
