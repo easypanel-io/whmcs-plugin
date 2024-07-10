@@ -371,9 +371,8 @@ class EasyPanelSDK {
 
         // Version adaptations
         $current_version = $this->getStatus()["version"];
-        $version = "v1.43.0";
         if($serviceType == "app") {
-            if (version_compare($current_version, $version) >= 0) {
+            if (version_compare($current_version, "1.43.0") >= 0) {
                 echo "Version is higher or equal to v1.43.0";
                 // Your API endpoint URL
                 $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.stopService";
@@ -446,9 +445,8 @@ class EasyPanelSDK {
 
         // Version adaptations
         $current_version = $this->getStatus()["version"];
-        $version = "1.43.0";
         if($serviceType == "app") {
-            if (version_compare($current_version, $version, "ge")) {
+            if (version_compare($current_version, "1.43.0", "ge")) {
                 echo "Version is higher or equal to v1.43.0";
                 // Your API endpoint URL
                 $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.startService";
