@@ -36,6 +36,11 @@ jobs:
           echo $NEW_VERSION > $VERSION_FILE
           echo "::set-output name=new_version::$NEW_VERSION"
 
+      - name: Prepare directory for zipping
+        run: |
+          mkdir easypanel
+          cp -r $(ls -A | grep -v easypanel) easypanel/
+
       - name: Zip repository contents
         run: zip -r easypanel.zip easypanel
 
