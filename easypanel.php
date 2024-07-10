@@ -1,5 +1,11 @@
-<?php   
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/sdk.php';
+
+use Ramsey\Uuid\Uuid;
 use WHMCS\Database\Capsule;
+use Hackzilla\PasswordGenerator\Generator\ComputerPasswordGenerator;
+
 /**
  * WHMCS SDK Sample Provisioning Module
  *
@@ -55,7 +61,7 @@ function provisioningmodule_MetaData()
     return array(
         'DisplayName' => 'EasyPanel Provisioning Module',
         'APIVersion' => '1.0', // Use API Version 1.1
-        'RequiresServer' => true, // Set true if module requires a server to work
+        'RequiresServer' => false, // Set true if module requires a server to work
         'DefaultNonSSLPort' => '80', // Default Non-SSL Connection Port
         'DefaultSSLPort' => '443', // Default SSL Connection Port
         'ServiceSingleSignOnLabel' => 'Login to Panel as User',
@@ -86,29 +92,29 @@ function provisioningmodule_MetaData()
  *
  * @return array
  */
-function provisioningmodule_ConfigOptions()
+function easypanel_ConfigOptions()
 {
     return array(
         // a text field type allows for single line text input
         'Host' => array(
-            'Type' => 'URL of your EasyPanel instance',
+            'Type' => 'text',
             'Size' => '1024',
-            'Default' => 'https//example.com:',
+            'Default' => '',
             'Description' => 'Enter the URL of your EasyPanel instance here',
         ),
         'API Key' => array(
-            'Type' => 'API Key of your EasyPanel instance',
+            'Type' => 'text',
             'Size' => '1024',
-            'Default' => 'enter your API Key here.',
+            'Default' => '',
             'Description' => 'Enter the API Key of your EasyPanel instance here',
         ),
         "Template" => [
             "FriendlyName" => "Template Name",
             "Type" => "dropdown", # Dropdown Choice of Options
             //"Options" => "ackee,activepieces,actualbudget,adguardhome,adminer,alltube,ampache,anonupload,answer,appsmith,audiobookshelf,authorizer,barrage,baserow,bazarr,blender,bookstack,botpress,budibase,bytebase,cachet,calcom,calibre,changedetection,chatpad,chatwoot,chromium,clickhouse,cockpit,codex-docs,collabora-office,commento,commentoplusplus,coralproject,corteza,cryptpad,cubejs,cusdis,cyberchef,dashdot,dashy,deluge,directus,docker-registry,documize,dokuwiki,domainmod,dozzle,drone-runner,drone,duplicati,easyshortener,element,emby,espocrm,etherpad,evobot,excalidraw,fider,filebrowser,filerun,filezilla,firefox,fireshare,flame,flarum,flowise,focalboard,freescout,freshrss,ghost-file-sharing,ghost,gitea,github-desktop,glitchtip,gogs,gotenberg,gotify,gotosocial,grafana,grav,grayduckmail,hammond,hastebin,hastypaste,hasura,hedgedoc,heimdall,hiccup,homarr,homeassistant,homer,humhub,icecoder,imgproxy,isso,ittools,jellyfin,jellyseerr,jirafeau,joplin,kanboard,kavita,keila,keycloak,komga,kopia,kutt,langflow,languagetool,lavalink,lenpaste,libreoffice,libretranslate,limesurvey,linkding,linkstack,listmonk,logseq,lychee,lynx,mailcrab,mailhog,mastodon,matomo,matrix-synapse,mattermost,mcaptcha,mealie,meilisearch,memos,metabase,metube,minecraft-server,miniflux,mongo-express,monica,mstream,muse,mysql-backup,n8n,nango,navidrome,netbox,nextcloud,nocobase,nocodb,nodebb,nodered,ntfy,nzbget,octobox,octoprint,odoo,onedev,openblocks,openproject,openspeedtest,opera,outline,owncast,owncloud,oxigen,papercups,paperlessngx,passbolt,peertube,pgvector,pgweb,photoprism,photoview,phpmyadmin,pidgin,planka,plausible,plex,ploi-roadmap,pocketbase,portainer,postgres-backup,powerdns-admin,prowlarr,psitransfer,pterodactyl-panel,pufferpanel,qdrant,rabbitmq,radarr,radicale,rallly,remmina,restreamer,rocketchat,rotki,roundcube,rsshub,searxng,serpbear,servas,shaarli,shiori,shynet,silicon-notes,simpletorrent,soketi,sonarr,sshwifty,statping-ng,strapi,substreamer,suitecrm,supertokens-core,syncthing,tandoor,tautulli,thelounge,thumbor,tolgee,tooljet,trilium,typebot,typesense,umami,unleash,uptimekuma,vaultwarden,verdaccio,vscode-server,wakatime,weaviate,webcord,weblate,wekan,wg-easy,whiteboard,wikijs,windmill,wizarr,wordpress,wps-office,yao,zipline",
-            "Options" => "ackee"
+            "Options" => "ghost",
             "Description" => "Select the template you want to provision.",
-            "Default" => "ackee",
+            "Default" => "ghost",
         ],
     );
 }
@@ -129,32 +135,49 @@ function provisioningmodule_ConfigOptions()
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_CreateAccount(array $params)
+function easypanel_CreateAccount(array $params)
 {
     try {
-        Capsule::schema()->create(
-            'tbleps',
-            function ($table) {
-                /** @var \Illuminate\Database\Schema\Blueprint $table */
-                $table->uuid('id')->primary();
-                $table->string('service');
-                $table->timestamps();
-                $table->foreign('client')
-                  ->references('uuid')
-                  ->on('tblclients')
-                  ->onDelete('cascade');
-            }
-        );
+        try {
+            Capsule::schema()->create(
+                'tbleasypanel',
+                function ($table) {
+                    /** @var \Illuminate\Database\Schema\Blueprint $table */
+                    $table->uuid('id')->primary();
+                    $table->string('service');
+                    $table->string('prefix');
+                    $table->boolean('primary');
+                    $table->integer('port')->unsigned();
+                    $table->uuid('client');
+                    $table->timestamps();
+                    $table->foreign('client')
+                        ->references('uuid')
+                        ->on('tblclients')
+                        ->onDelete('cascade');
+                }
+            );
+        } catch (\Exception $e) {
+            echo "Unable to create my_table: {$e->getMessage()}";
+        }
         $clientId = $_SESSION['uid'] ?? throw new Exception('Client not logged in or not in client area.');
-        DB::table('tbleps')->insert([
-            'string' => $params['Template'],
-            'client' => $clientId,
-        ]);
-        // Call the service's provisioning function, using the values provided by
-        // WHMCS in `$params`.
-        $sdk = new EasyPanelSDK();
-        $project = $sdk->createProject($params['Host'], $params['API Key'], $clientId);
-        $service = $sdk->createService($params['Host'], $params['API Key'], $clientId, $params['Template']);
+        $client = Capsule::table('tblclients')
+            ->where('id', $clientId)
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        $sdk->createProject($clientId);
+        // TODO: Create Services from Git and create boxes
+        $services = $sdk->createServiceFromSchema($clientId, $params['configoption3'], $params['serviceid'], $params['domain']);
+        foreach ($services['services'] as $service) {
+            Capsule::table('tbleasypanel')->insert([
+                'id' => Uuid::uuid4()->toString(),
+                'service' => $service,
+                'prefix' => $services['prefix'],
+                'primary' => preg_replace($services['prefix'], "", $service) == $params['configoption3'] ? true : false,
+                'client' => $clientId,
+            ]);
+        }
+
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
         logModuleCall(
@@ -184,11 +207,23 @@ function provisioningmodule_CreateAccount(array $params)
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_SuspendAccount(array $params)
+function easypanel_SuspendAccount(array $params)
 {
     try {
         // Call the service's suspend function, using the values provided by
         // WHMCS in `$params`.
+        $client = Capsule::table('tblclients')
+            ->where('id', $params['userid'])
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $services = Capsule::table('tbleasypanel')
+            ->where('client', $clientId)
+            ->where('prefix', $params['serviceid']."_")
+            ->get();
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        foreach ($services as $service) {
+            $sdk->disableService($clientId, $service->service);
+        }
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
         logModuleCall(
@@ -218,11 +253,23 @@ function provisioningmodule_SuspendAccount(array $params)
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_UnsuspendAccount(array $params)
+function easypanel_UnsuspendAccount(array $params)
 {
     try {
         // Call the service's unsuspend function, using the values provided by
         // WHMCS in `$params`.
+        $client = Capsule::table('tblclients')
+            ->where('id', $params['userid'])
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $services = Capsule::table('tbleasypanel')
+            ->where('client', $clientId)
+            ->where('prefix', $params['serviceid']."_")
+            ->get();
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        foreach ($services as $service) {
+            $sdk->enableService($clientId, $service->service);
+        }
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
         logModuleCall(
@@ -251,11 +298,21 @@ function provisioningmodule_UnsuspendAccount(array $params)
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_TerminateAccount(array $params)
+function easypanel_TerminateAccount(array $params)
 {
     try {
-        // Call the service's terminate function, using the values provided by
-        // WHMCS in `$params`.
+        $client = Capsule::table('tblclients')
+            ->where('id', $params['userid'])
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $services = Capsule::table('tbleasypanel')
+            ->where('client', $clientId)
+            ->where('prefix', $params['serviceid']."_")
+            ->get();
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        foreach ($services as $service) {
+            $sdk->destroyService($clientId, $service->service);
+        }
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
         logModuleCall(
@@ -369,7 +426,7 @@ function provisioningmodule_ChangePackage(array $params)
  * Renew an instance of a product/service.
  *
  * Attempt to renew an existing instance of a given product/service. This is
- * called any time a product/service invoice has been paid. 
+ * called any time a product/service invoice has been paid.
  *
  * @param array $params common module parameters
  *
@@ -466,13 +523,13 @@ function provisioningmodule_TestConnection(array $params)
  *
  * @return array
  */
-function provisioningmodule_AdminCustomButtonArray()
+/*function easypanel_AdminCustomButtonArray()
 {
     return array(
         "Button 1 Display Value" => "buttonOneFunction",
         "Button 2 Display Value" => "buttonTwoFunction",
     );
-}
+}*/
 
 /**
  * Additional actions a client user can invoke.
@@ -485,11 +542,12 @@ function provisioningmodule_AdminCustomButtonArray()
  *
  * @return array
  */
-function provisioningmodule_ClientAreaCustomButtonArray()
+function easypanel_ClientAreaCustomButtonArray()
 {
     return array(
-        "Action 1 Display Value" => "actionOneFunction",
-        "Action 2 Display Value" => "actionTwoFunction",
+        "Start service" => "startService",
+        "Restart service" => "restartService",
+        "Stop service" => "stopService",
     );
 }
 
@@ -508,11 +566,67 @@ function provisioningmodule_ClientAreaCustomButtonArray()
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_buttonOneFunction(array $params)
+function easypanel_stopService(array $params)
 {
     try {
-        // Call the service's function, using the values provided by WHMCS in
-        // `$params`.
+        $client = Capsule::table('tblclients')
+            ->where('id', $params['userid'])
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $services = Capsule::table('tbleasypanel')
+            ->where('client', $clientId)
+            ->where('prefix', $params['serviceid']."_")
+            ->get();
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        foreach ($services as $service) {
+            $sdk->disableService($clientId, $service->service);
+        }
+    } catch (Exception $e) {
+        // Record the error in WHMCS's module log.
+        logModuleCall(
+            'provisioningmodule',
+            __FUNCTION__,
+            $params,
+            $e->getMessage(),
+            $e->getTraceAsString()
+        );
+
+        return $e->getMessage();
+    }
+
+    return 'success';
+}
+
+/**
+ * Custom function for performing an additional action.
+ *
+ * You can define an unlimited number of custom functions in this way.
+ *
+ * Similar to all other module call functions, they should either return
+ * 'success' or an error message to be displayed.
+ *
+ * @param array $params common module parameters
+ *
+ * @see https://developers.whmcs.com/provisioning-modules/module-parameters/
+ * @see provisioningmodule_AdminCustomButtonArray()
+ *
+ * @return string "success" or an error message
+ */
+function easypanel_restartService(array $params)
+{
+    try {
+        $client = Capsule::table('tblclients')
+            ->where('id', $params['userid'])
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $services = Capsule::table('tbleasypanel')
+            ->where('client', $clientId)
+            ->where('prefix', $params['serviceid']."_")
+            ->get();
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        foreach ($services as $service) {
+            $sdk->restartService($clientId, $service->service);
+        }
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
         logModuleCall(
@@ -544,11 +658,21 @@ function provisioningmodule_buttonOneFunction(array $params)
  *
  * @return string "success" or an error message
  */
-function provisioningmodule_actionOneFunction(array $params)
+function easypanel_startService(array $params)
 {
     try {
-        // Call the service's function, using the values provided by WHMCS in
-        // `$params`.
+        $client = Capsule::table('tblclients')
+            ->where('id', $params['userid'])
+            ->first(['uuid']);
+        $clientId = $client->uuid;
+        $services = Capsule::table('tbleasypanel')
+            ->where('client', $clientId)
+            ->where('prefix', $params['serviceid']."_")
+            ->get();
+        $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
+        foreach ($services as $service) {
+            $sdk->enableService($clientId, $service->service);
+        }
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.
         logModuleCall(

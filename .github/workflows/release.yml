@@ -1,0 +1,73 @@
+name: Release on PR Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up version file
+        id: setup_version
+        run: |
+          VERSION_FILE="VERSION"
+          if [ ! -f "$VERSION_FILE" ]; then
+            echo "0.0.0" > $VERSION_FILE
+          fi
+          CURRENT_VERSION=$(cat $VERSION_FILE)
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Increment version number
+        id: increment_version
+        run: |
+          VERSION_FILE="VERSION"
+          CURRENT_VERSION=$(cat $VERSION_FILE)
+          IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+          VERSION_PARTS[2]=$((VERSION_PARTS[2] + 1))
+          NEW_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.${VERSION_PARTS[2]}"
+          echo "New version: $NEW_VERSION"
+          echo $NEW_VERSION > $VERSION_FILE
+          echo "::set-output name=new_version::$NEW_VERSION"
+
+      - name: Zip repository contents
+        run: |
+          mkdir easypanel
+          cp -r * easypanel
+          zip -r easypanel.zip easypanel
+
+      - name: Commit version bump
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add VERSION
+          git commit -m "Bump version to ${{ steps.increment_version.outputs.new_version }}"
+          git tag -a "v${{ steps.increment_version.outputs.new_version }}" -m "Version ${{ steps.increment_version.outputs.new_version }}"
+          git push origin --tags
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "v${{ steps.increment_version.outputs.new_version }}"
+          release_name: "v${{ steps.increment_version.outputs.new_version }}"
+          body: "Release of version ${{ steps.increment_version.outputs.new_version }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./easypanel.zip
+          asset_name: easypanel.zip
+          asset_content_type: application/zip

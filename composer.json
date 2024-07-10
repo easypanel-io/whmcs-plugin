@@ -1,5 +1,5 @@
 {
-    "name": "whmcs/provisioning-module-sample",
+    "name": "easypanel/provisioning-module-for-whmcs",
     "description": "EasyPanel Provisioning Module for WHMCS Billing Automation Platform",
     "keywords": [
         "whmcs",
@@ -23,7 +23,8 @@
         "wiki": "https://easypanel.io/docs"
     },
     "require": {
-        "ramsey/uuid": "^4.2"
+        "ramsey/uuid": "^4.2",
+        "hackzilla/password-generator": "^1.6"
     },
     "require-dev": {
         "phpunit/phpunit": "@stable"
