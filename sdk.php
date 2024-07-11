@@ -1,5 +1,11 @@
 <?php
 
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Ramsey\Uuid\Uuid;
+use WHMCS\Database\Capsule;
+use Hackzilla\PasswordGenerator\Generator\ComputerPasswordGenerator;
+
 class EasyPanelSDK {
 
     function __construct($apiUrl, $authorizationToken)  {
