@@ -159,9 +159,8 @@ function easypanel_CreateAccount(array $params)
         } catch (\Exception $e) {
             echo "Unable to create my_table: {$e->getMessage()}";
         }
-        $clientId = $_SESSION['uid'] ?? throw new Exception('Client not logged in or not in client area.');
         $client = Capsule::table('tblclients')
-            ->where('id', $clientId)
+            ->where('id', $params['userid'])
             ->first(['uuid']);
         $clientId = $client->uuid;
         $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
