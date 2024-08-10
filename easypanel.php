@@ -183,7 +183,7 @@ function easypanel_CreateAccount(array $params)
                 $wordpress = $sdk->createServiceBox($clientId, $params['configoption3'], $params['serviceid'], $params['domain']);
                 $mysql = $sdk->createServiceFromSchema($clientId, 'mysql', $params['serviceid'], $params['domain']);
                 $services = [
-                    'services' => array_merge($wordpress['services'],$mysql['services'])
+                    'services' => array_merge($wordpress['services'],$mysql['services']),
                     'prefix' => $wordpress['prefix'],
                 ];
                 foreach ($services['services'] as $service) {
