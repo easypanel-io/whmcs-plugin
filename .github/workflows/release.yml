@@ -53,14 +53,14 @@ jobs:
       - name: Zip repository contents
         run: zip -r easypanel.zip easypanel
 
-      - name: Commit version bump
-        run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
-          git add VERSION
-          git commit -m "Bump version to ${{ steps.increment_version.outputs.new_version }}"
-          git tag -a "v${{ steps.increment_version.outputs.new_version }}" -m "Version ${{ steps.increment_version.outputs.new_version }}"
-          git push origin --tags
+#      - name: Commit version bump
+#        run: |
+#          git config --global user.name 'github-actions'
+#          git config --global user.email 'github-actions@github.com'
+#          git add VERSION
+#          git commit -m "Bump version to ${{ steps.increment_version.outputs.new_version }}"
+#          git tag -a "v${{ steps.increment_version.outputs.new_version }}" -m "Version ${{ steps.increment_version.outputs.new_version }}"
+#          git push origin --tags
 
       - name: Create GitHub Release
         id: create_release
