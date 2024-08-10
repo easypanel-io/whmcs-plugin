@@ -112,10 +112,22 @@ function easypanel_ConfigOptions()
             "FriendlyName" => "Template Name",
             "Type" => "dropdown", # Dropdown Choice of Options
             //"Options" => "ackee,activepieces,actualbudget,adguardhome,adminer,alltube,ampache,anonupload,answer,appsmith,audiobookshelf,authorizer,barrage,baserow,bazarr,blender,bookstack,botpress,budibase,bytebase,cachet,calcom,calibre,changedetection,chatpad,chatwoot,chromium,clickhouse,cockpit,codex-docs,collabora-office,commento,commentoplusplus,coralproject,corteza,cryptpad,cubejs,cusdis,cyberchef,dashdot,dashy,deluge,directus,docker-registry,documize,dokuwiki,domainmod,dozzle,drone-runner,drone,duplicati,easyshortener,element,emby,espocrm,etherpad,evobot,excalidraw,fider,filebrowser,filerun,filezilla,firefox,fireshare,flame,flarum,flowise,focalboard,freescout,freshrss,ghost-file-sharing,ghost,gitea,github-desktop,glitchtip,gogs,gotenberg,gotify,gotosocial,grafana,grav,grayduckmail,hammond,hastebin,hastypaste,hasura,hedgedoc,heimdall,hiccup,homarr,homeassistant,homer,humhub,icecoder,imgproxy,isso,ittools,jellyfin,jellyseerr,jirafeau,joplin,kanboard,kavita,keila,keycloak,komga,kopia,kutt,langflow,languagetool,lavalink,lenpaste,libreoffice,libretranslate,limesurvey,linkding,linkstack,listmonk,logseq,lychee,lynx,mailcrab,mailhog,mastodon,matomo,matrix-synapse,mattermost,mcaptcha,mealie,meilisearch,memos,metabase,metube,minecraft-server,miniflux,mongo-express,monica,mstream,muse,mysql-backup,n8n,nango,navidrome,netbox,nextcloud,nocobase,nocodb,nodebb,nodered,ntfy,nzbget,octobox,octoprint,odoo,onedev,openblocks,openproject,openspeedtest,opera,outline,owncast,owncloud,oxigen,papercups,paperlessngx,passbolt,peertube,pgvector,pgweb,photoprism,photoview,phpmyadmin,pidgin,planka,plausible,plex,ploi-roadmap,pocketbase,portainer,postgres-backup,powerdns-admin,prowlarr,psitransfer,pterodactyl-panel,pufferpanel,qdrant,rabbitmq,radarr,radicale,rallly,remmina,restreamer,rocketchat,rotki,roundcube,rsshub,searxng,serpbear,servas,shaarli,shiori,shynet,silicon-notes,simpletorrent,soketi,sonarr,sshwifty,statping-ng,strapi,substreamer,suitecrm,supertokens-core,syncthing,tandoor,tautulli,thelounge,thumbor,tolgee,tooljet,trilium,typebot,typesense,umami,unleash,uptimekuma,vaultwarden,verdaccio,vscode-server,wakatime,weaviate,webcord,weblate,wekan,wg-easy,whiteboard,wikijs,windmill,wizarr,wordpress,wps-office,yao,zipline",
-            "Options" => "ghost",
+            "Options" => "ghost,wordpress",
             "Description" => "Select the template you want to provision.",
             "Default" => "ghost",
         ],
+        'CPU limit' => array(
+            'Type' => 'text',
+            'Size' => '1024',
+            'Default' => '1024',
+            'Description' => 'Enter the CPU use limit number',
+        ),
+        'RAM limit (MB)' => array(
+            'Type' => 'text',
+            'Size' => '1024',
+            'Default' => '1024',
+            'Description' => 'Enter the RAM use limit in MB',
+        ),
     );
 }
 
@@ -165,17 +177,41 @@ function easypanel_CreateAccount(array $params)
         $clientId = $client->uuid;
         $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
         $sdk->createProject($clientId);
-        // TODO: Create Services from Git and create boxes
-        $services = $sdk->createServiceFromSchema($clientId, $params['configoption3'], $params['serviceid'], $params['domain']);
-        foreach ($services['services'] as $service) {
-            Capsule::table('tbleasypanel')->insert([
-                'id' => Uuid::uuid4()->toString(),
-                'service' => $service,
-                'prefix' => $services['prefix'],
-                'primary' => preg_replace($services['prefix'], "", $service) == $params['configoption3'] ? true : false,
-                'client' => $clientId,
-            ]);
+        // TODO: Create Services from Git
+        switch ($params['configoption3']) {
+            case "wordpress":
+                $wordpress = $sdk->createServiceBox($clientId, $params['configoption3'], $params['serviceid'], $params['domain']);
+                $mysql = $sdk->createServiceFromSchema($clientId, 'mysql', $params['serviceid'], $params['domain']);
+                $services = [
+                    'services' => array_merge($wordpress['services'],$mysql['services'])
+                    'prefix' => $wordpress['prefix'],
+                ];
+                foreach ($services['services'] as $service) {
+                    $sdk->updateResources($clientId, $service, $params['configoption4'], $params['configoption5']);
+                    Capsule::table('tbleasypanel')->insert([
+                        'id' => Uuid::uuid4()->toString(),
+                        'service' => $service,
+                        'prefix' => $services['prefix'],
+                        'primary' => preg_replace($services['prefix'], "", $service) == $params['configoption3'] ? true : false,
+                        'client' => $clientId,
+                    ]);
+                }
+                break;
+            default:
+                $services = $sdk->createServiceFromSchema($clientId, $params['configoption3'], $params['serviceid'], $params['domain']);
+                foreach ($services['services'] as $service) {
+                    $sdk->updateResources($clientId, $service, $params['configoption4'], $params['configoption5']);
+                    Capsule::table('tbleasypanel')->insert([
+                        'id' => Uuid::uuid4()->toString(),
+                        'service' => $service,
+                        'prefix' => $services['prefix'],
+                        'primary' => preg_replace($services['prefix'], "", $service) == $params['configoption3'] ? true : false,
+                        'client' => $clientId,
+                    ]);
+                }
+                break;
         }
+        
 
     } catch (Exception $e) {
         // Record the error in WHMCS's module log.

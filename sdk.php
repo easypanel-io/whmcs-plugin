@@ -15,7 +15,7 @@ class EasyPanelSDK {
 
     private function service_type($originalString) {
         // can be app, mysql, mariadb, postgres, mongo or redis
-        $keywords = ["mysql", "mariadb", "postgres", "mongo", "redis"];
+        $keywords = ["mysql", "mariadb", "postgres", "mongo", "redis", "wordpress"];
 
         // Variable to store the matched keyword
         $matchedKeyword = null;
@@ -243,7 +243,93 @@ class EasyPanelSDK {
 
         $template = $service["template"];
 
+        $headers = array(
+            'Content-Type: application/json',
+            "Authorization: $authorizationToken",
+        );
 
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $template);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+
+        $hasService = $data['error']['json']['code'];
+
+        if($hasService !== -32603) {
+            $domain = $this->setDomain($clientId, $serviceNamePrefix.$templateName, $service['port'], $domain);
+            $headers = array(
+                'Content-Type: application/json',
+                "Authorization: $authorizationToken",
+            );
+            $apiUrl = "$this->apiUrl/api/trpc/services.app.updateDomains";
+            // Set up cURL
+            $ch = curl_init($apiUrl);
+
+            // Set cURL options
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $domain);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+            // Execute cURL session and get the response
+            curl_exec($ch);
+
+            // Check for cURL errors
+            if (curl_errno($ch)) {
+                echo 'Curl error: ' . curl_error($ch);
+            }
+
+            // Close cURL session
+            curl_close($ch);
+
+            return [
+                'services' => $service["services"],
+                'prefix' => $serviceNamePrefix,
+            ];
+        } else {
+            // HTTP/1.1 409 Conflict
+            return false;
+        }
+    }
+
+    public function createServiceBox($clientId, $templateName, $serviceNamePrefix, $domain) {
+        // API endpoint URL
+        $apiUrl = "$this->apiUrl/api/trpc/services.box.createService";
+        // Validate url
+        $apiUrlTest = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if (!$apiUrlTest) {
+            throw new Exception("Invalid API URL: $apiUrl", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API Token: $authorizationToken", 1);
+        }
+
+        $serviceNamePrefix = $serviceNamePrefix . "_";
+
+        $serviceNamePrefix = htmlspecialchars($serviceNamePrefix, ENT_QUOTES, 'UTF-8');
+
+        $service = $this->$templateName($clientId, $serviceNamePrefix);
+
+        $template = $service["template"];
 
         $headers = array(
             'Content-Type: application/json',
@@ -579,6 +665,74 @@ class EasyPanelSDK {
         echo $response;
     }
 
+    public function updateResources($project, $service, $cpu_limit, $ram_limit) {
+        // Type of service
+        $serviceType = $this->service_type($service);
+
+        // Your API endpoint URL
+        $apiUrl = "$this->apiUrl/api/trpc/services.$serviceType.updateResources";
+
+        // Validate url
+        $apiUrl = filter_var($apiUrl, FILTER_VALIDATE_URL);
+        if ($apiUrl === false) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
+        if (empty($authorizationToken)) {
+            throw new Exception("Invalid API URL", 1);
+        }
+
+        // Request headers
+        $headers = array(
+            'Content-Type: application/json',
+            'Authorization: ' . $authorizationToken,
+        );
+
+        $project = htmlspecialchars($clientId, ENT_QUOTES, 'UTF-8');
+
+        $service = htmlspecialchars($service, ENT_QUOTES, 'UTF-8');
+
+        // Request data
+        $body = json_decode('
+        {
+            "json": {
+                "projectName": "'.$project.'",
+                "serviceName": "'.$service.'",
+                "resources": {
+                    "memoryReservation": 0,
+                    "memoryLimit": '.$ram_limit.',
+                    "cpuReservation": 0,
+                    "cpuLimit": '.$cpu_limit.'
+                }
+            }
+        }
+        ');
+
+        // Set up cURL
+        $ch = curl_init($apiUrl);
+
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        // Execute cURL session and get the response
+        $response = curl_exec($ch);
+
+        // Check for cURL errors
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
+        }
+
+        // Close cURL session
+        curl_close($ch);
+
+        // Display the response
+        echo $response;
+    }
+
     public function monitorServiceStatus() {
         // TODO: Implement monitorServiceStatus method
     }
@@ -597,7 +751,7 @@ class EasyPanelSDK {
         $template = '
 {
     "json": {
-        "name": "Ghost",
+        "name": "ghost",
         "projectName": "'.$projectName.'",
         "schema": {
             "services": [
@@ -613,7 +767,9 @@ class EasyPanelSDK {
                         "domains": [
                             {
                                 "host": "$(EASYPANEL_DOMAIN)",
-                                "port": 2368
+                                "port": 2368,
+                                "https": true,
+                                "path": "/"
                             }
                         ],
                         "mounts": [
@@ -648,6 +804,104 @@ class EasyPanelSDK {
             'port' => 2368
         ];
     }
+
+    private function wordpress($projectName, $serviceNamePrefix) {
+        $generator = new ComputerPasswordGenerator();
+
+        $generator
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_UPPER_CASE, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_LOWER_CASE, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_NUMBERS, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_SYMBOLS, false)
+        ;
+
+        $mysql_password = $generator->generatePassword();
+        $template = '
+{
+    "json": {
+        "projectName": "'.$projectName.'",
+        "domains": [
+            {
+                "host": "$(EASYPANEL_DOMAIN)",
+                "https": true,
+                "port": 80,
+                "path": "/"
+            }
+        ],
+        "presetKey": "wordpress",
+        "serviceName": "'.$serviceNamePrefix.'wordpress"
+    }
+}
+        ';
+        $database = '
+{
+    "json": {
+        "name": "mysql",
+        "projectName": "'.$projectName.'",
+        "schema": {
+            "services": [
+                {
+                    "type": "mysql",
+                    "data": {
+                        "projectName": "'.$projectName.'",
+                        "serviceName": "'.$serviceNamePrefix.'mysql",
+                        "password": "'.$mysql_password.'",
+                    }
+                }
+            ]
+        }
+    }
+}
+        ';
+        return [
+            'templates' => $template,
+            'services' => [
+                $serviceNamePrefix . "wordpress",
+            ],
+            'port' => 80
+        ];
+    }
+
+    private function mysql($projectName, $serviceNamePrefix) {
+        $generator = new ComputerPasswordGenerator();
+
+        $generator
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_UPPER_CASE, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_LOWER_CASE, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_NUMBERS, true)
+            ->setOptionValue(ComputerPasswordGenerator::OPTION_SYMBOLS, false)
+        ;
+
+        $mysql_password = $generator->generatePassword();
+        $template = '
+{
+    "json": {
+        "name": "mysql",
+        "projectName": "'.$projectName.'",
+        "schema": {
+            "services": [
+                {
+                    "type": "mysql",
+                    "data": {
+                        "projectName": "'.$projectName.'",
+                        "serviceName": "'.$serviceNamePrefix.'mysql",
+                        "password": "'.$mysql_password.'",
+                    }
+                }
+            ]
+        }
+    }
+}
+        ';
+        return [
+            'templates' => $template,
+            'services' => [
+                $serviceNamePrefix . "mysql",
+            ],
+            'port' => null
+        ];
+    }
+
     public function setDomain($projectName, $serviceName, $servicePort, $domain) {
         $request = '
 {
