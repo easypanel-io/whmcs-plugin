@@ -309,94 +309,6 @@ class EasyPanelSDK {
         }
     }
 
-    public function createServiceBox($clientId, $templateName, $serviceNamePrefix, $domain) {
-        // API endpoint URL
-        $apiUrl = "$this->apiUrl/api/trpc/services.box.createService";
-        // Validate url
-        $apiUrlTest = filter_var($apiUrl, FILTER_VALIDATE_URL);
-        if (!$apiUrlTest) {
-            throw new Exception("Invalid API URL: $apiUrl", 1);
-        }
-
-        $authorizationToken = htmlspecialchars($this->authorizationToken, ENT_QUOTES, 'UTF-8');
-        if (empty($authorizationToken)) {
-            throw new Exception("Invalid API Token: $authorizationToken", 1);
-        }
-
-        $serviceNamePrefix = $serviceNamePrefix . "_";
-
-        $serviceNamePrefix = htmlspecialchars($serviceNamePrefix, ENT_QUOTES, 'UTF-8');
-
-        $service = $this->$templateName($clientId, $serviceNamePrefix);
-
-        $template = $service["template"];
-
-        $headers = array(
-            'Content-Type: application/json',
-            "Authorization: $authorizationToken",
-        );
-
-        // Set up cURL
-        $ch = curl_init($apiUrl);
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $template);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-
-        // Execute cURL session and get the response
-        $response = curl_exec($ch);
-
-        // Check for cURL errors
-        if (curl_errno($ch)) {
-            echo 'Curl error: ' . curl_error($ch);
-        }
-
-        // Close cURL session
-        curl_close($ch);
-
-        $data = json_decode($response, true);
-
-        $hasService = $data['error']['json']['code'];
-
-        if($hasService !== -32603) {
-            $domain = $this->setDomain($clientId, $serviceNamePrefix.$templateName, $service['port'], $domain);
-            $headers = array(
-                'Content-Type: application/json',
-                "Authorization: $authorizationToken",
-            );
-            $apiUrl = "$this->apiUrl/api/trpc/services.app.updateDomains";
-            // Set up cURL
-            $ch = curl_init($apiUrl);
-
-            // Set cURL options
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $domain);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-
-            // Execute cURL session and get the response
-            curl_exec($ch);
-
-            // Check for cURL errors
-            if (curl_errno($ch)) {
-                echo 'Curl error: ' . curl_error($ch);
-            }
-
-            // Close cURL session
-            curl_close($ch);
-
-            return [
-                'services' => $service["services"],
-                'prefix' => $serviceNamePrefix,
-            ];
-        } else {
-            // HTTP/1.1 409 Conflict
-            return false;
-        }
-    }
-
     public function destroyService($clientId, $service) {
         // Type of service
         $serviceType = $this->service_type($service);
@@ -751,7 +663,7 @@ class EasyPanelSDK {
         $template = '
 {
     "json": {
-        "name": "ghost",
+        "name": "Ghost",
         "projectName": "'.$projectName.'",
         "schema": {
             "services": [
@@ -816,89 +728,64 @@ class EasyPanelSDK {
         ;
 
         $mysql_password = $generator->generatePassword();
+
         $template = '
-{
-    "json": {
-        "projectName": "'.$projectName.'",
-        "domains": [
-            {
-                "host": "$(EASYPANEL_DOMAIN)",
-                "https": true,
-                "port": 80,
-                "path": "/"
-            }
-        ],
-        "presetKey": "wordpress",
-        "serviceName": "'.$serviceNamePrefix.'wordpress"
-    }
-}
-        ';
-        $database = '
-{
-    "json": {
-        "name": "mysql",
-        "projectName": "'.$projectName.'",
-        "schema": {
-            "services": [
-                {
-                    "type": "mysql",
-                    "data": {
-                        "projectName": "'.$projectName.'",
-                        "serviceName": "'.$serviceNamePrefix.'mysql",
-                        "password": "'.$mysql_password.'",
-                    }
+        {
+            "json": {
+                "name": "Wordpress",
+                "projectName": "'.$projectName.'",
+                "schema": {
+                    "services": [
+                        {
+                            "type": "app",
+                            "data": {
+                                "serviceName": "'.$serviceNamePrefix.'wordpress",
+                                "env": "WORDPRESS_DB_HOST=$(PROJECT_NAME)_'.$serviceNamePrefix.'mysql\nWORDPRESS_DB_USER=mysql\nWORDPRESS_DB_PASSWORD='.$mysql_password.'\nWORDPRESS_DB_NAME=$(PROJECT_NAME)",
+                                "source": {
+                                    "type": "image",
+                                    "image": "wordpress:latest"
+                                },
+                                "domains": [
+                                    {
+                                        "host": "$(EASYPANEL_DOMAIN)",
+                                        "https": true,
+                                        "port": 80,
+                                        "path": "/"
+                                    }
+                                ],
+                                "mounts": [
+                                    {
+                                        "type": "volume",
+                                        "name": "data",
+                                        "mountPath": "/var/www/html"
+                                    },
+                                    {
+                                        "type": "file",
+                                        "content": "upload_max_filesize = 100M\npost_max_size = 100M\n",
+                                        "mountPath": "/usr/local/etc/php/conf.d/custom.ini"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "mysql",
+                            "data": {
+                                "serviceName": "'.$serviceNamePrefix.'mysql",
+                                "password": "'.$mysql_password.'"
+                            }
+                        }
+                    ]
                 }
-            ]
+            }
         }
-    }
-}
         ';
         return [
-            'templates' => $template,
+            'template' => $template,
             'services' => [
                 $serviceNamePrefix . "wordpress",
-            ],
-            'port' => 80
-        ];
-    }
-
-    private function mysql($projectName, $serviceNamePrefix) {
-        $generator = new ComputerPasswordGenerator();
-
-        $generator
-            ->setOptionValue(ComputerPasswordGenerator::OPTION_UPPER_CASE, true)
-            ->setOptionValue(ComputerPasswordGenerator::OPTION_LOWER_CASE, true)
-            ->setOptionValue(ComputerPasswordGenerator::OPTION_NUMBERS, true)
-            ->setOptionValue(ComputerPasswordGenerator::OPTION_SYMBOLS, false)
-        ;
-
-        $mysql_password = $generator->generatePassword();
-        $template = '
-{
-    "json": {
-        "name": "mysql",
-        "projectName": "'.$projectName.'",
-        "schema": {
-            "services": [
-                {
-                    "type": "mysql",
-                    "data": {
-                        "projectName": "'.$projectName.'",
-                        "serviceName": "'.$serviceNamePrefix.'mysql",
-                        "password": "'.$mysql_password.'",
-                    }
-                }
-            ]
-        }
-    }
-}
-        ';
-        return [
-            'templates' => $template,
-            'services' => [
                 $serviceNamePrefix . "mysql",
             ],
-            'port' => null
+            'port' => 80
         ];
     }
 

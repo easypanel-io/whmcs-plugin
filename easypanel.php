@@ -56,7 +56,7 @@ if (!defined("WHMCS")) {
  *
  * @return array
  */
-function provisioningmodule_MetaData()
+function easypanel_MetaData()
 {
     return array(
         'DisplayName' => 'EasyPanel Provisioning Module',
@@ -149,67 +149,46 @@ function easypanel_ConfigOptions()
  */
 function easypanel_CreateAccount(array $params)
 {
+    ini_set('display_errors', 0);
     try {
-        try {
-            Capsule::schema()->create(
-                'tbleasypanel',
-                function ($table) {
-                    /** @var \Illuminate\Database\Schema\Blueprint $table */
-                    $table->uuid('id')->primary();
-                    $table->string('service');
-                    $table->string('prefix');
-                    $table->boolean('primary');
-                    $table->integer('port')->unsigned();
-                    $table->uuid('client');
-                    $table->timestamps();
-                    $table->foreign('client')
-                        ->references('uuid')
-                        ->on('tblclients')
-                        ->onDelete('cascade');
-                }
-            );
-        } catch (\Exception $e) {
-            echo "Unable to create my_table: {$e->getMessage()}";
-        }
+        Capsule::schema()->create(
+            'tbleasypanel',
+            function ($table) {
+                /** @var \Illuminate\Database\Schema\Blueprint $table */
+                $table->uuid('id')->primary();
+                $table->string('service');
+                $table->string('prefix');
+                $table->boolean('primary');
+                $table->integer('port')->unsigned();
+                $table->uuid('client');
+                $table->timestamps();
+                $table->foreign('client')
+                    ->references('uuid')
+                    ->on('tblclients')
+                    ->onDelete('cascade');
+            }
+        );
+    } catch (\Exception $e) {
+        //echo "Unable to create my_table: {$e->getMessage()}";
+    }
+    try {
         $client = Capsule::table('tblclients')
             ->where('id', $params['userid'])
             ->first(['uuid']);
         $clientId = $client->uuid;
         $sdk = new EasyPanelSDK($params['configoption1'], $params['configoption2']);
         $sdk->createProject($clientId);
-        // TODO: Create Services from Git
-        switch ($params['configoption3']) {
-            case "wordpress":
-                $wordpress = $sdk->createServiceBox($clientId, $params['configoption3'], $params['serviceid'], $params['domain']);
-                $mysql = $sdk->createServiceFromSchema($clientId, 'mysql', $params['serviceid'], $params['domain']);
-                $services = [
-                    'services' => array_merge($wordpress['services'],$mysql['services']),
-                    'prefix' => $wordpress['prefix'],
-                ];
-                foreach ($services['services'] as $service) {
-                    $sdk->updateResources($clientId, $service, $params['configoption4'], $params['configoption5']);
-                    Capsule::table('tbleasypanel')->insert([
-                        'id' => Uuid::uuid4()->toString(),
-                        'service' => $service,
-                        'prefix' => $services['prefix'],
-                        'primary' => preg_replace($services['prefix'], "", $service) == $params['configoption3'] ? true : false,
-                        'client' => $clientId,
-                    ]);
-                }
-                break;
-            default:
-                $services = $sdk->createServiceFromSchema($clientId, $params['configoption3'], $params['serviceid'], $params['domain']);
-                foreach ($services['services'] as $service) {
-                    $sdk->updateResources($clientId, $service, $params['configoption4'], $params['configoption5']);
-                    Capsule::table('tbleasypanel')->insert([
-                        'id' => Uuid::uuid4()->toString(),
-                        'service' => $service,
-                        'prefix' => $services['prefix'],
-                        'primary' => preg_replace($services['prefix'], "", $service) == $params['configoption3'] ? true : false,
-                        'client' => $clientId,
-                    ]);
-                }
-                break;
+        // TODO: Create Services from Git and Box
+        $services = $sdk->createServiceFromSchema($clientId, $params['configoption3'], $params['serviceid'], $params['domain']);
+        foreach ($services['services'] as $service) {
+            Capsule::table('tbleasypanel')->insert([
+                'id' => Uuid::uuid4()->toString(),
+                'service' => $service,
+                'prefix' => $services['prefix'],
+                'primary' => preg_replace($services['prefix'], "", $service) == $params['configoption3'] ? true : false,
+                'client' => $clientId,
+            ]);
+            $sdk->updateResources($clientId, $service, $params['configoption4'], $params['configoption5']);
         }
         
 
