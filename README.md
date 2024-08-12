@@ -11,21 +11,22 @@ Please use the [EasyPanel Discord](https://discord.gg/SARw8nbpnZ) for configurat
 ## Installation
 
 
-1. Download/Git clone this repository.
-2. Move the ``easypanel/`` folder into ``<path to whmcs>/modules/servers/``.
-3. Login to your Easypanel and Navigate to Settings > Users
-4. Click ``Generate API Key``
-5. Copy the API key by clicking the Clipboard Icon
-4. In WHMCS 8+ navigate to System Settings → Servers. In WHMCS 7 or below navigate to Setup → Products/Services → Servers
-5. Create new server, fill the name with anything you want, hostname as the url to the panel either as an IP or domain. For example: ``123.123.123.123`` or ``my.easypanel.com``
-6. Change Server Type to EasyPanel, leave username empty, fill the password field with your generated API Key.
-7. Tick the "Secure" option if your panel is using SSL.
-8. Confirm that everything works by clicking the Test Connection button -> Save Changes.
-9. Go back to the Servers screen and press Create New Group, name it anything you want and choose the created server and press the Add button, Save Changes.
-10. Navigate to Setup > Products/Services > Products/Services
-11. Create your desired product (and product group if you haven't already) with the type of Other and product name of anything -> Continue.
-12. Click the Module Settings tab, choose for Module Name EasyPanel and for the Server Group the group you created in step 8.
-13. Fill all non-optional fields, and you are good to go!
+1. Download the latest easypanel.zip file from [here](https://github.com/easypanel-io/whmcs-plugin/releases/latest).
+2. Upload the ``easypanel.zip`` into ``<path to whmcs>/modules/servers/``.
+3. Extract the ``easypanel.zip``
+4. Login to your Easypanel and Navigate to ``Settings`` > ``Users``
+5. Click ``Generate API Key``
+6. Copy the ``API key`` by clicking the Clipboard Icon
+7. Navigate to ``Setup/System Settings`` > ``Products/Services``
+8. Click ``Create a New Product``
+9. Under the Module settings within the Product you created Select ``EasyPanel Provisioning Module``
+10. Choose a Server Group or leave it as None
+11. Enter your Easypanel Host name under Host. Be sure to include https:// within the URL Example: https://easypanelhost.example
+12. Select your preferred template for this product I.E. Ghost, Wordpress
+13. Set any RAM limits in Megabytes for instance 1024 for 1GB
+14. Set any CPU limits if desired
+15. Paste your ``API Key`` you copied earlier into the ``API Key`` field
+16. Click Save Changes and You're good to go. Just Copy this product/service to easily create more products etc.
 
 ## Credits
 
